@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBXFORGE — AI Game Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b10;
+    --surface: #0d1117;
+    --surface2: #131920;
+    --surface3: #1a2332;
+    --accent: #00e5ff;
+    --accent2: #ff4d6d;
+    --accent3: #7c3aed;
+    --gold: #fbbf24;
+    --text: #e2eaf5;
+    --text-muted: #6b7d94;
+    --border: #1e2d3d;
+    --glow: rgba(0,229,255,0.15);
+    --glow2: rgba(124,58,237,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient glows */
+  .ambient {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ambient-1 {
+    width: 600px; height: 600px;
+    background: rgba(124,58,237,0.08);
+    top: -200px; left: -200px;
+  }
+  .ambient-2 {
+    width: 500px; height: 500px;
+    background: rgba(0,229,255,0.06);
+    bottom: -100px; right: -100px;
+  }
+
+  /* Layout */
+  .app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 36px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,11,16,0.85);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  .logo span { color: var(--accent); }
+
+  nav { display: flex; gap: 8px; }
+
+  .nav-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .header-actions { display: flex; align-items: center; gap: 12px; }
+
+  .status-dot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .btn-primary {
+    padding: 9px 20px;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    border: none;
+    color: white;
+    border-radius: 7px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(0,229,255,0.25);
+  }
+
+  /* Main layout */
+  main {
+    display: grid;
+    grid-template-columns: 300px 1fr 340px;
+    flex: 1;
+    gap: 0;
+  }
+
+  /* Panel shared styles */
+  .panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 69px);
+    overflow: hidden;
+  }
+
+  .panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+
+  .panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* LEFT PANEL — Project explorer */
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    margin-top: 4px;
+  }
+
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .tree-item:hover { background: var(--surface2); color: var(--text); }
+  .tree-item.active { background: var(--surface3); color: var(--accent); }
+
+  .tree-icon {
+    font-size: 0.75rem;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .tree-item.indent { padding-left: 28px; }
+
+  .badge {
+    margin-left: auto;
+    font-size: 0.62rem;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+
+  .badge-blue { background: rgba(0,229,255,0.12); color: var(--accent); }
+  .badge-purple { background: rgba(124,58,237,0.15); color: #a78bfa; }
+  .badge-red { background: rgba(255,77,109,0.12); color: var(--accent2); }
+  .badge-green { background: rgba(34,197,94,0.12); color: #4ade80; }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
+  }
+
+  /* CENTER PANEL — AI Builder */
+  .center-panel { display: flex; flex-direction: column; border-right: none; }
+
+  /* Hero prompt area */
+  .prompt-area {
+    padding: 28px 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, var(--surface), transparent);
+    flex-shrink: 0;
+  }
+
+  .prompt-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .prompt-container {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .prompt-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--glow);
+  }
+
+  .prompt-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    padding: 18px 20px 14px;
+    resize: none;
+    min-height: 80px;
+    line-height: 1.6;
+  }
+
+  .prompt-input::placeholder { color: var(--text-muted); }
+
+  .prompt-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .prompt-tags { display: flex; gap: 6px; }
+
+  .tag {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .tag-outline {
+    border-color: var(--border);
+    color: var(--text-muted);
+    background: transparent;
+  }
+
+  .tag-outline:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--glow);
+  }
+
+  .tag-filled {
+    background: rgba(124,58,237,0.2);
+    color: #a78bfa;
+    border-color: rgba(124,58,237,0.3);
+  }
+
+  .generate-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #7c3aed, var(--accent));
+    border: none;
+    color: white;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .generate-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(124,58,237,0.4);
+  }
+
+  .generate-btn:active { transform: translateY(0); }
+
+  .generate-btn.loading .btn-icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Output area */
+  .output-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+  }
+
+  .output-area::-webkit-scrollbar { width: 4px; }
+  .output-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Generation steps */
+  .gen-pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .gen-step {
+    flex: 1;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+
+  .gen-step:last-child { border-right: none; }
+
+  .gen-step.done { color: #4ade80; }
+  .gen-step.active { color: var(--accent); background: rgba(0,229,255,0.04); }
+
+  .step-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--surface3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .gen-step.done .step-num { background: rgba(34,197,94,0.2); color: #4ade80; }
+  .gen-step.active .step-num { background: var(--glow); color: var(--accent); }
+
+  /* Code block */
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .code-lang {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .lang-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .code-actions { display: flex; gap: 6px; }
+
+  .code-btn {
+    padding: 4px 12px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .code-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  pre {
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #cdd6f4;
+  }
+
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .kw { color: #cba6f7; }
+  .fn { color: #89b4fa; }
+  .str { color: #a6e3a1; }
+  .num { color: #fab387; }
+  .cm { color: #585b70; }
+  .var { color: #cdd6f4; }
+  .prop { color: #89dceb; }
+
+  /* Model cards */
+  .model-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .model-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .model-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--glow2), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .model-card:hover { border-color: var(--accent3); transform: translateY(-2px); }
+  .model-card:hover::before { opacity: 1; }
+
+  .model-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--glow);
+  }
+
+  .model-icon {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+  }
+
+  .model-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .model-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Properties panel items */
+  .prop-group { margin-bottom: 20px; }
+
+  .prop-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+  }
+
+  .prop-key {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .prop-val {
+    font-size: 0.76rem;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+
+  .prop-input {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    width: 120px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .prop-input:focus { border-color: var(--accent); }
+
+  .prop-select {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Toggle switch */
+  .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+
+  .toggle {
+    width: 36px; height: 20px;
+    background: var(--surface3);
+    border-radius: 20px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    border: 1px solid var(--border);
+  }
+
+  .toggle.on { background: var(--accent3); border-color: var(--accent3); }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+  }
+
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* Console */
+  .console-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .console-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .console-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .console-body {
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    line-height: 1.8;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .console-body::-webkit-scrollbar { width: 3px; }
+  .console-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .log-line { display: flex; gap: 10px; }
+  .log-time { color: var(--text-muted); flex-shrink: 0; }
+  .log-info { color: var(--accent); }
+  .log-success { color: #4ade80; }
+  .log-warn { color: var(--gold); }
+  .log-error { color: var(--accent2); }
+
+  /* Connection card */
+  .connection-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .conn-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .conn-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .conn-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .conn-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .conn-dot.connected { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .conn-dot.disconnected { background: var(--accent2); }
+
+  .endpoint-row {
+    display: flex;
+    align-items: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .endpoint-method {
+    padding: 8px 12px;
+    background: rgba(0,229,255,0.1);
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .endpoint-url {
+    flex: 1;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Animations */
+  .fade-in { animation: fadeIn 0.4s ease both; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide-in { animation: slideIn 0.3s ease both; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .tab {
+    padding: 12px 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,229,255,0.04); }
+
+  /* Quick action chips */
+  .quick-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+
+  .chip {
+    padding: 5px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--glow);
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    background: var(--surface3);
+    border-radius: 4px;
+    height: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    transition: width 0.4s ease;
+  }
+
+  /* Notification toast */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    min-width: 260px;
+    animation: toastIn 0.3s ease both;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .toast-icon { font-size: 1rem; }
+
+  /* Scrollable code output */
+  .typing-cursor::after {
+    content: '▊';
+    color: var(--accent);
+    animation: blink 0.8s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="ambient ambient-1"></div>
+<div class="ambient ambient-2"></div>
+
+<div class="app">
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      RBX<span>FORGE</span>
+    </div>
+    <nav>
+      <button class="nav-btn active" onclick="switchTab('builder')">Builder</button>
+      <button class="nav-btn" onclick="switchTab('templates')">Templates</button>
+      <button class="nav-btn" onclick="switchTab('deploy')">Deploy</button>
+      <button class="nav-btn" onclick="switchTab('docs')">Docs</button>
+    </nav>
+    <div class="header-actions">
+      <div class="status-dot">
+        <div class="dot"></div>
+        Plugin Connected
+      </div>
+      <button class="btn-primary" onclick="showToast('🚀 Pushing to Roblox Studio...', 'info')">Push to Studio</button>
+    </div>
+  </header>
+
+  <!-- Main 3-column layout -->
+  <main>
+    <!-- LEFT: Project Tree -->
+    <div class="panel" style="background: var(--surface);">
+      <div class="panel-header">
+        <span class="panel-title">Project Explorer</span>
+        <button class="code-btn" onclick="showToast('📁 New folder created', 'success')">+ New</button>
+      </div>
+      <div class="panel-body">
+        <div class="section-label">Game Structure</div>
+
+        <div class="tree-item active" onclick="selectItem(this)">
+          <span class="tree-icon">🎮</span> MyPlatformerGame
+          <span class="badge badge-blue">root</span>
+        </div>
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">📁</span> ServerScripts
+          <span class="badge badge-green">3</span>
+        </div>
+        <div class="tree-item indent" style="padding-left:44px" onclick="selectItem(this)">
+          <span class="tree-icon">📄</span> GameManager.lua
+        </div>
+        <div class="tree-item indent" style="padding-left:44px" onclick="selectItem(this)">
+          <span class="tree-icon">📄</span> EnemyAI.lua
+        </div>
+        <div class="tree-item indent" style="padding-left:44px" onclick="selectItem(this)">
+          <span class="tree-icon">📄</span> PowerUpSystem.lua
+        </div>
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">📁</span> LocalScripts
+          <span class="badge badge-purple">2</span>
+        </div>
+        <div class="tree-item indent" style="padding-left:44px" onclick="selectItem(this)">
+          <span class="tree-icon">📄</span> PlayerController.lua
+        </div>
+        <div class="tree-item indent" style="padding-left:44px" onclick="selectItem(this)">
+          <span class="tree-icon">📄</span> UIManager.lua
+        </div>
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">📁</span> Models
+          <span class="badge badge-blue">8</span>
+        </div>
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">📁</span> RemoteEvents
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-label">AI Generated</div>
+
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">✨</span> PlatformSpawner.lua
+          <span class="badge badge-purple">AI</span>
+        </div>
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">✨</span> EnemyPatrol.lua
+          <span class="badge badge-purple">AI</span>
+        </div>
+        <div class="tree-item indent" onclick="selectItem(this)">
+          <span class="tree-icon">✨</span> CoinCollect.lua
+          <span class="badge badge-purple">AI</span>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-label">API Endpoints</div>
+
+        <div class="tree-item" onclick="selectItem(this)">
+          <span class="tree-icon">🔗</span> /api/generate
+          <span class="badge badge-green">POST</span>
+        </div>
+        <div class="tree-item" onclick="selectItem(this)">
+          <span class="tree-icon">🔗</span> /api/models
+          <span class="badge badge-blue">GET</span>
+        </div>
+        <div class="tree-item" onclick="selectItem(this)">
+          <span class="tree-icon">🔗</span> /api/deploy
+          <span class="badge badge-red">WS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: AI Builder -->
+    <div class="panel center-panel">
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchCenterTab(this, 'generate')">⚡ Generate</div>
+        <div class="tab" onclick="switchCenterTab(this, 'models')">🧱 Models</div>
+        <div class="tab" onclick="switchCenterTab(this, 'scripts')">📝 Scripts</div>
+        <div class="tab" onclick="switchCenterTab(this, 'workflow')">⚙️ Workflow</div>
+      </div>
+
+      <!-- Generate tab -->
+      <div id="tab-generate" class="prompt-area">
+        <div class="prompt-label">AI Prompt — Describe what to build</div>
+        <div class="prompt-container">
+          <textarea
+            class="prompt-input"
+            id="mainPrompt"
+            placeholder="e.g. Create a platformer game with moving platforms, collectible coins, patrolling enemies with health bars, and a checkpoint system..."
+            rows="3"
+          ></textarea>
+          <div class="prompt-toolbar">
+            <div class="prompt-tags">
+              <button class="tag tag-filled">Platformer</button>
+              <button class="tag tag-outline" onclick="addTag(this, 'Enemies')">+ Enemies</button>
+              <button class="tag tag-outline" onclick="addTag(this, 'Physics')">+ Physics</button>
+              <button class="tag tag-outline" onclick="addTag(this, 'UI')">+ UI</button>
+              <button class="tag tag-outline" onclick="addTag(this, 'Multiplayer')">+ Multiplayer</button>
+            </div>
+            <button class="generate-btn" id="genBtn" onclick="runGenerate()">
+              <span class="btn-icon">⚡</span>
+              Generate
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="output-area" id="outputArea">
+        <div class="quick-actions">
+          <div class="chip" onclick="loadPreset('platformer')">🎮 Platformer Starter</div>
+          <div class="chip" onclick="loadPreset('shooter')">🔫 Shooter Game</div>
+          <div class="chip" onclick="loadPreset('obby')">🏃 Obby Course</div>
+          <div class="chip" onclick="loadPreset('rpg')">⚔️ RPG Framework</div>
+          <div class="chip" onclick="loadPreset('tycoon')">🏭 Tycoon Base</div>
+          <div class="chip" onclick="loadPreset('racing')">🏎️ Racing Game</div>
+        </div>
+
+        <!-- Pipeline steps -->
+        <div class="gen-pipeline fade-in" id="pipeline">
+          <div class="gen-step done" id="step1">
+            <div class="step-num">✓</div>
+            <span>Parse Prompt</span>
+          </div>
+          <div class="gen-step active" id="step2">
+            <div class="step-num">2</div>
+            <span>Generate Lua</span>
+          </div>
+          <div class="gen-step" id="step3">
+            <div class="step-num">3</div>
+            <span>Build Models</span>
+          </div>
+          <div class="gen-step" id="step4">
+            <div class="step-num">4</div>
+            <span>Deploy Plugin</span>
+          </div>
+        </div>
+
+        <!-- Generated script output -->
+        <div class="code-block fade-in">
+          <div class="code-header">
+            <div class="code-lang">
+              <div class="lang-dot" style="background:#89b4fa;"></div>
+              EnemyAI.lua — AI Generated
+            </div>
+            <div class="code-actions">
+              <button class="code-btn" onclick="copyCode()">Copy</button>
+              <button class="code-btn" onclick="showToast('📤 Sent to Roblox Studio!', 'success')">Send to Studio</button>
+              <button class="code-btn" onclick="showToast('♻️ Regenerating...', 'info')">↺ Regen</button>
+            </div>
+          </div>
+          <pre id="codeOutput"><span class="cm">-- RBXFORGE AI Generated Script</span>
+<span class="cm">-- Enemy AI with patrol, chase, and attack logic</span>
+<span class="cm">-- Generated: 2026-03-03 | Model: claude-sonnet-4</span>
+
+<span class="kw">local</span> <span class="var">RunService</span> = <span class="fn">game</span>:<span class="fn">GetService</span>(<span class="str">"RunService"</span>)
+<span class="kw">local</span> <span class="var">Players</span> = <span class="fn">game</span>:<span class="fn">GetService</span>(<span class="str">"Players"</span>)
+<span class="kw">local</span> <span class="var">HttpService</span> = <span class="fn">game</span>:<span class="fn">GetService</span>(<span class="str">"HttpService"</span>)
+
+<span class="cm">-- Config (editable via RBXFORGE dashboard)</span>
+<span class="kw">local</span> <span class="var">CONFIG</span> = {
+  <span class="prop">patrolRadius</span> = <span class="num">20</span>,
+  <span class="prop">chaseRadius</span> = <span class="num">40</span>,
+  <span class="prop">attackRadius</span> = <span class="num">5</span>,
+  <span class="prop">moveSpeed</span> = <span class="num">12</span>,
+  <span class="prop">maxHealth</span> = <span class="num">100</span>,
+  <span class="prop">attackDamage</span> = <span class="num">15</span>,
+  <span class="prop">attackCooldown</span> = <span class="num">1.5</span>,
+}
+
+<span class="kw">local</span> <span class="var">EnemyModule</span> = {}
+<span class="var">EnemyModule</span>.__index = <span class="var">EnemyModule</span>
+
+<span class="kw">function</span> <span class="fn">EnemyModule.new</span>(<span class="var">model</span>, <span class="var">config</span>)
+  <span class="kw">local</span> <span class="var">self</span> = <span class="fn">setmetatable</span>({}, <span class="var">EnemyModule</span>)
+  <span class="var">self</span>.<span class="prop">model</span> = <span class="var">model</span>
+  <span class="var">self</span>.<span class="prop">config</span> = <span class="var">config</span> <span class="kw">or</span> <span class="var">CONFIG</span>
+  <span class="var">self</span>.<span class="prop">state</span> = <span class="str">"patrol"</span>
+  <span class="var">self</span>.<span class="prop">health</span> = <span class="var">self</span>.<span class="prop">config</span>.<span class="prop">maxHealth</span>
+  <span class="var">self</span>.<span class="prop">origin</span> = <span class="var">model</span>.<span class="prop">HumanoidRootPart</span>.<span class="prop">Position</span>
+  <span class="var">self</span>.<span class="prop">lastAttack</span> = <span class="num">0</span>
+  <span class="kw">return</span> <span class="var">self</span>
+<span class="kw">end</span>
+
+<span class="kw">function</span> <span class="fn">EnemyModule:getClosestPlayer</span>()
+  <span class="kw">local</span> <span class="var">closest</span>, <span class="var">minDist</span> = <span class="kw">nil</span>, <span class="fn">math.huge</span>
+  <span class="kw">for</span> _, <span class="var">player</span> <span class="kw">in</span> <span class="fn">ipairs</span>(<span class="var">Players</span>:<span class="fn">GetPlayers</span>()) <span class="kw">do</span>
+    <span class="kw">if</span> <span class="var">player</span>.<span class="prop">Character</span> <span class="kw">then</span>
+      <span class="kw">local</span> <span class="var">dist</span> = (<span class="var">player</span>.<span class="prop">Character</span>.<span class="prop">HumanoidRootPart</span>.<span class="prop">Position</span>
+        - <span class="var">self</span>.<span class="prop">model</span>.<span class="prop">HumanoidRootPart</span>.<span class="prop">Position</span>).<span class="prop">Magnitude</span>
+      <span class="kw">if</span> <span class="var">dist</span> &lt; <span class="var">minDist</span> <span class="kw">then</span>
+        <span class="var">closest</span>, <span class="var">minDist</span> = <span class="var">player</span>, <span class="var">dist</span>
+      <span class="kw">end</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+  <span class="kw">return</span> <span class="var">closest</span>, <span class="var">minDist</span>
+<span class="kw">end</span>
+
+<span class="kw">function</span> <span class="fn">EnemyModule:update</span>(<span class="var">dt</span>)
+  <span class="kw">local</span> <span class="var">player</span>, <span class="var">dist</span> = <span class="var">self</span>:<span class="fn">getClosestPlayer</span>()
+  <span class="kw">local</span> <span class="var">humanoid</span> = <span class="var">self</span>.<span class="prop">model</span>:<span class="fn">FindFirstChild</span>(<span class="str">"Humanoid"</span>)
+  
+  <span class="kw">if</span> <span class="var">dist</span> &lt; <span class="var">self</span>.<span class="prop">config</span>.<span class="prop">attackRadius</span> <span class="kw">then</span>
+    <span class="var">self</span>.<span class="prop">state</span> = <span class="str">"attack"</span>
+    <span class="var">self</span>:<span class="fn">attack</span>(<span class="var">player</span>)
+  <span class="kw">elseif</span> <span class="var">dist</span> &lt; <span class="var">self</span>.<span class="prop">config</span>.<span class="prop">chaseRadius</span> <span class="kw">then</span>
+    <span class="var">self</span>.<span class="prop">state</span> = <span class="str">"chase"</span>
+    <span class="var">humanoid</span>:<span class="fn">MoveTo</span>(<span class="var">player</span>.<span class="prop">Character</span>.<span class="prop">HumanoidRootPart</span>.<span class="prop">Position</span>)
+  <span class="kw">else</span>
+    <span class="var">self</span>.<span class="prop">state</span> = <span class="str">"patrol"</span>
+    <span class="var">self</span>:<span class="fn">patrol</span>()
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">return</span> <span class="var">EnemyModule</span></pre>
+        </div>
+
+        <!-- Console -->
+        <div class="console-area fade-in">
+          <div class="console-header">
+            <span class="console-title">Output Console</span>
+            <button class="code-btn" onclick="clearConsole()">Clear</button>
+          </div>
+          <div class="console-body" id="consoleLogs">
+            <div class="log-line"><span class="log-time">09:14:02</span><span class="log-info">[INFO]</span> <span>RBXFORGE plugin initialized</span></div>
+            <div class="log-line"><span class="log-time">09:14:03</span><span class="log-success">[OK]</span> <span>WebSocket connected to Studio</span></div>
+            <div class="log-line"><span class="log-time">09:14:07</span><span class="log-info">[AI]</span> <span>Generating EnemyAI.lua from prompt...</span></div>
+            <div class="log-line"><span class="log-time">09:14:09</span><span class="log-success">[OK]</span> <span>Script generated (187 lines)</span></div>
+            <div class="log-line"><span class="log-time">09:14:10</span><span class="log-info">[PUSH]</span> <span>Sending to Roblox Studio...</span></div>
+            <div class="log-line"><span class="log-time">09:14:11</span><span class="log-success">[OK]</span> <span>EnemyAI.lua placed in ServerScriptService</span></div>
+            <div class="log-line"><span class="log-time">09:14:12</span><span class="log-warn">[WARN]</span> <span>HttpService requires enabled in Studio settings</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Properties + Connection -->
+    <div class="panel" style="background: var(--surface);">
+      <div class="panel-header">
+        <span class="panel-title">Properties</span>
+        <div class="status-dot" style="font-size:0.7rem;">
+          <div class="dot"></div> Live
+        </div>
+      </div>
+      <div class="panel-body">
+
+        <!-- Connection card -->
+        <div class="connection-card">
+          <div class="conn-header">
+            <span class="conn-title">Studio Connection</span>
+            <div class="conn-status">
+              <div class="conn-dot connected"></div> Connected
+            </div>
+          </div>
+
+          <div class="endpoint-row">
+            <div class="endpoint-method">WS</div>
+            <div class="endpoint-url">ws://localhost:8080/studio</div>
+          </div>
+          <div class="endpoint-row">
+            <div class="endpoint-method">POST</div>
+            <div class="endpoint-url">https://api.rbxforge.io/generate</div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="prop-row">
+              <span class="prop-key">Latency</span>
+              <span class="prop-val" style="color:#4ade80">12ms</span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-key">Session</span>
+              <span class="prop-val">rbx_9f2k4a</span>
+            </div>
+            <div class="prop-row">
+              <span class="prop-key">Studio ver</span>
+              <span class="prop-val">0.623.1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Config -->
+        <div class="section-label">AI Configuration</div>
+        <div class="prop-group">
+          <div class="prop-row">
+            <span class="prop-key">Model</span>
+            <select class="prop-select">
+              <option>claude-sonnet-4</option>
+              <option>claude-opus-4</option>
+              <option>claude-haiku-4</option>
+            </select>
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Temperature</span>
+            <input class="prop-input" type="number" value="0.7" min="0" max="1" step="0.1">
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Max tokens</span>
+            <input class="prop-input" type="number" value="4096">
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Comments</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Type hints</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Auto-push</span>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Script Config -->
+        <div class="section-label">Script Properties</div>
+        <div class="prop-group">
+          <div class="prop-row">
+            <span class="prop-key">Game type</span>
+            <select class="prop-select">
+              <option>Platformer</option>
+              <option>Shooter</option>
+              <option>RPG</option>
+              <option>Obby</option>
+              <option>Tycoon</option>
+            </select>
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Max players</span>
+            <input class="prop-input" type="number" value="20">
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">Anti-cheat</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="prop-row">
+            <span class="prop-key">DataStore</span>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Generation progress -->
+        <div class="section-label">Last Generation</div>
+        <div style="padding: 4px 0;">
+          <div style="display:flex; justify-content:space-between; font-size:0.73rem; margin-bottom:6px;">
+            <span style="color:var(--text-muted)">Progress</span>
+            <span style="font-family:'JetBrains Mono',monospace; color:var(--accent)">100%</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-bar" style="width:100%"></div>
+          </div>
+
+          <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center;">
+              <div style="font-size:1.4rem; font-weight:800; color:var(--accent); font-family:'JetBrains Mono',monospace;">187</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">lines generated</div>
+            </div>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center;">
+              <div style="font-size:1.4rem; font-weight:800; color:#a78bfa; font-family:'JetBrains Mono',monospace;">1.8s</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">generation time</div>
+            </div>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center;">
+              <div style="font-size:1.4rem; font-weight:800; color:#4ade80; font-family:'JetBrains Mono',monospace;">3</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">scripts created</div>
+            </div>
+            <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; text-align:center;">
+              <div style="font-size:1.4rem; font-weight:800; color:var(--gold); font-family:'JetBrains Mono',monospace;">0</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">errors found</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // Tab switching
+  function switchTab(tab) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    showToast(`📂 Switched to ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, 'info');
+  }
+
+  function switchCenterTab(el, tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Tree item selection
+  function selectItem(el) {
+    document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Add tag
+  function addTag(el, name) {
+    el.className = 'tag tag-filled';
+    el.onclick = null;
+    showToast(`🏷️ Tag "${name}" added`, 'success');
+  }
+
+  // Generate sequence
+  function runGenerate() {
+    const btn = document.getElementById('genBtn');
+    const prompt = document.getElementById('mainPrompt').value.trim();
+
+    btn.innerHTML = '<span class="btn-icon" style="animation:spin 1s linear infinite;display:inline-block">⟳</span> Generating...';
+    btn.disabled = true;
+
+    // Step animation
+    const steps = ['step1','step2','step3','step4'];
+    steps.forEach(s => {
+      document.getElementById(s).className = 'gen-step';
+      document.getElementById(s).querySelector('.step-num').textContent = s.replace('step','');
+    });
+
+    let i = 0;
+    const messages = [
+      'Parsing prompt & detecting game type...',
+      'Generating Lua scripts with Claude AI...',
+      'Creating 3D model templates...',
+      'Pushing to Roblox Studio plugin...'
+    ];
+
+    const interval = setInterval(() => {
+      if (i > 0) {
+        document.getElementById(steps[i-1]).className = 'gen-step done';
+        document.getElementById(steps[i-1]).querySelector('.step-num').textContent = '✓';
+      }
+      if (i < steps.length) {
+        document.getElementById(steps[i]).className = 'gen-step active';
+        addConsoleLog('info', messages[i]);
+      }
+      i++;
+      if (i > steps.length) {
+        clearInterval(interval);
+        btn.innerHTML = '<span class="btn-icon">⚡</span> Generate';
+        btn.disabled = false;
+        addConsoleLog('success', 'Build complete! 3 scripts generated, 0 errors');
+        showToast('✅ Build successful! Scripts ready in Studio', 'success');
+      }
+    }, 900);
+  }
+
+  // Preset loader
+  function loadPreset(type) {
+    const prompts = {
+      platformer: 'Create a classic platformer with moving platforms, coin collection, bounce pads, and enemy patrol guards with health bars.',
+      shooter: 'Build a 3rd person shooter with weapon pickups, ammo system, enemy AI with cover-seeking behavior, and kill streaks.',
+      obby: 'Generate an obstacle course with conveyor belts, spinning parts, lava floors, checkpoints, and a timer leaderboard.',
+      rpg: 'Create an RPG framework with inventory system, quest tracker, NPC dialogue trees, character leveling, and stat upgrades.',
+      tycoon: 'Build a tycoon game with purchasable machines, dropper/collector system, upgrades UI, and cash earning loop.',
+      racing: 'Generate a racing game with vehicle spawning, lap timer, boost pads, drift mechanics, and a race HUD.'
+    };
+    document.getElementById('mainPrompt').value = prompts[type];
+    showToast(`📋 Preset loaded: ${type.charAt(0).toUpperCase() + type.slice(1)}`, 'info');
+  }
+
+  // Copy code
+  function copyCode() {
+    navigator.clipboard.writeText(document.getElementById('codeOutput').innerText);
+    showToast('📋 Code copied to clipboard!', 'success');
+  }
+
+  // Clear console
+  function clearConsole() {
+    document.getElementById('consoleLogs').innerHTML = '';
+    showToast('🧹 Console cleared', 'info');
+  }
+
+  // Add console log
+  function addConsoleLog(type, msg) {
+    const now = new Date();
+    const time = now.toTimeString().slice(0,8);
+    const typeMap = {
+      info: ['[INFO]', 'log-info'],
+      success: ['[OK]', 'log-success'],
+      warn: ['[WARN]', 'log-warn'],
+      error: ['[ERR]', 'log-error']
+    };
+    const [label, cls] = typeMap[type] || typeMap.info;
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    div.innerHTML = `<span class="log-time">${time}</span><span class="${cls}">${label}</span> <span>${msg}</span>`;
+    const console = document.getElementById('consoleLogs');
+    console.appendChild(div);
+    console.scrollTop = console.scrollHeight;
+  }
+
+  // Toast system
+  function showToast(message, type) {
+    const icons = { success: '✅', info: 'ℹ️', warn: '⚠️', error: '❌' };
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'toastIn 0.3s ease reverse';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+</script>
+</body>
+</html>
